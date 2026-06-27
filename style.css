@@ -183,6 +183,10 @@ body {
   justify-content: center;
 }
 
+body {
+  align-items: center;
+}
+
 .app {
   width: 100%;
   max-width: 560px;
