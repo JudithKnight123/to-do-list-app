@@ -193,6 +193,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
+  margin: 0 auto;
 }
 
 /* ─── Header ────────────────────────────────────────────────────────────── */
