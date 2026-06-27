@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focus — To-Do</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- ─── Login Overlay ──────────────────────────────────────────────────── -->
+  <div id="loginOverlay" class="login-overlay" aria-modal="true" role="dialog" aria-label="Sign in">
+    <div class="login-card">
+      <div class="login-logo">✦</div>
+      <h1 class="login-title">Focus</h1>
+      <p class="login-subtitle">Your private to-do list.<br>Sign in to get started.</p>
+
+      <!-- Step 1: enter email -->
+      <div id="loginStep1">
+        <div class="login-field">
+          <label for="loginEmail" class="login-label">Email address</label>
+          <input
+            type="email"
+            id="loginEmail"
+            class="login-input"
+            placeholder="you@example.com"
+            autocomplete="email"
+            inputmode="email"
+          />
+        </div>
+        <button class="btn btn-accent login-btn" id="sendOtpBtn">
+          Send magic link
+        </button>
+        <p class="login-hint">We'll email you a one-time sign-in link. No password needed.</p>
+      </div>
+
+      <!-- Step 2: check email -->
+      <div id="loginStep2" style="display:none">
+        <div class="login-check-icon">✉</div>
+        <p class="login-check-msg">Check your inbox — we sent a magic link to <strong id="loginEmailDisplay"></strong>.</p>
+        <p class="login-hint">Click the link in the email to sign in. You can close this tab.</p>
+        <button class="btn btn-ghost btn-sm login-back" id="loginBackBtn">← Use a different email</button>
+      </div>
+
+      <!-- Error message -->
+      <p class="login-error" id="loginError" style="display:none"></p>
+    </div>
+  </div>
+
+  <!-- ─── Main App (hidden until authenticated) ─────────────────────────── -->
+  <div id="appRoot" style="display:none">
+
+    <div class="app">
+
+      <!-- Header -->
+      <header>
+        <div class="header-row">
+          <div>
+            <h1>Focus</h1>
+            <p class="date" id="dateDisplay"></p>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="signOutBtn" title="Sign out">Sign out</button>
+        </div>
+      </header>
+
+      <!-- Focus Card -->
+      <section class="focus-card" id="focusCard" aria-label="Focus Task of the Day">
+        <div class="focus-label">
+          <span class="dot" aria-hidden="true"></span>
+          Focus task of the day
+        </div>
+
+        <div class="focus-empty" id="focusEmpty">
+          <p>No focus task yet. <strong>Pick one randomly</strong> from your list, or just get started.</p>
+          <div class="focus-empty-actions">
+            <button class="btn btn-accent" id="surpriseMeBtn">✦ Surprise me</button>
+          </div>
+        </div>
+
+        <div class="focus-task-display" id="focusTaskDisplay">
+          <div class="focus-task-meta">
+            <span id="focusCatPill"></span>
+          </div>
+          <p class="focus-task-text" id="focusTaskText"></p>
+          <div class="focus-actions">
+            <button class="btn btn-done" id="focusDoneBtn">✓ Done</button>
+            <button class="btn btn-ghost" id="rerollBtn">↺ Re-roll</button>
+            <button class="btn btn-ghost btn-sm" id="clearFocusBtn">Clear focus</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Add Task -->
+      <div class="add-task-area">
+        <div class="add-task-row">
+          <input type="text" class="task-input" id="taskInput"
+            placeholder="Add a task…" aria-label="New task" maxlength="200" autocomplete="off" />
+          <button class="btn btn-accent" id="addTaskBtn">Add</button>
+        </div>
+        <div class="cat-select-row">
+          <span class="cat-select-label">Category:</span>
+          <div class="cat-select-pills" id="catSelectPills"></div>
+        </div>
+        <div class="new-cat-row" id="newCatRow">
+          <input type="text" class="new-cat-input" id="newCatInput"
+            placeholder="Category name…" maxlength="24" autocomplete="off" aria-label="New category name" />
+          <div class="color-swatches" id="colorSwatches"></div>
+          <button class="btn btn-ghost btn-sm" id="saveCatBtn">Save</button>
+          <button class="btn btn-ghost btn-sm" id="cancelCatBtn">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div>
+        <div class="filter-bar" id="filterBar"></div>
+      </div>
+
+      <!-- Loading indicator -->
+      <div class="loading-row" id="loadingRow" style="display:none">
+        <span class="spinner"></span> Loading…
+      </div>
+
+      <!-- Pending Tasks -->
+      <section aria-label="Your tasks">
+        <div class="list-header">
+          <span class="list-title" id="listTitle">Up next</span>
+          <span class="list-count" id="pendingCount">0 tasks</span>
+        </div>
+        <ul class="task-list" id="taskList" role="list"></ul>
+      </section>
+
+      <!-- Completed Tasks -->
+      <section class="done-section" id="doneSection" style="display:none" aria-label="Completed tasks">
+        <button class="done-toggle" id="doneToggle" aria-expanded="false">
+          <i class="chevron" aria-hidden="true">›</i>
+          Completed (<span id="doneCount">0</span>)
+        </button>
+        <ul class="done-list" id="doneList" role="list"></ul>
+      </section>
+
+      <!-- Manage Categories -->
+      <section class="manage-cats-section">
+        <button class="manage-cats-toggle" id="manageCatsToggle" aria-expanded="false">
+          <i class="chevron" aria-hidden="true">›</i>
+          Manage categories
+        </button>
+        <div class="manage-cats-body" id="manageCatsBody"></div>
+      </section>
+
+    </div><!-- /.app -->
+
+  </div><!-- /#appRoot -->
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Action Sheet -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="action-sheet" id="actionSheet" role="dialog" aria-modal="true" aria-label="Task options">
+    <div class="sheet-handle"></div>
+    <p class="sheet-task-name" id="sheetTaskName"></p>
+    <div class="sheet-actions">
+      <button class="sheet-btn" id="sheetEditBtn">
+        <span class="sheet-icon">✎</span> Edit task
+      </button>
+      <button class="sheet-btn danger" id="sheetDeleteBtn">
+        <span class="sheet-icon">✕</span> Delete task
+      </button>
+      <button class="sheet-btn sheet-cancel" id="sheetCancelBtn">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
