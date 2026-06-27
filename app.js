@@ -70,6 +70,14 @@ function escHtml(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+/* Detects URLs in text and wraps them in <a> tags, leaving everything else as plain escaped text */
+function linkifyText(rawText) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return escHtml(rawText).replace(urlRegex,
+    url => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="task-link">${url}</a>`
+  );
+}
+
 function catPillHTML(catId) {
   const cat = getCat(catId);
   if (!cat) return '';
@@ -261,7 +269,7 @@ async function editTask(id, newText) {
   const task = tasks.find(t => t.id === id);
   if (task) task.text = trimmed;
   if (focusTaskId === id) {
-    document.getElementById('focusTaskText').textContent = trimmed;
+    document.getElementById('focusTaskText').innerHTML = linkifyText(trimmed);
   }
   render();
   showToast('Task updated');
@@ -426,7 +434,7 @@ function renderFocus() {
 
   if (task && !task.done) {
     card.classList.add('has-task');
-    focusText.textContent = task.text;
+    focusText.innerHTML = linkifyText(task.text);
     focusPill.innerHTML = task.cat_id ? catPillHTML(task.cat_id) : '';
   } else {
     if (focusTaskId) saveFocus(null);
@@ -549,7 +557,7 @@ function renderList() {
 
     li.innerHTML = `
       <input type="checkbox" class="task-check" aria-label="Mark as done" />
-      <span class="task-label">${escHtml(task.text)}</span>
+      <span class="task-label">${linkifyText(task.text)}</span>
       <div class="task-right">
         ${task.cat_id ? catPillHTML(task.cat_id) : ''}
         <button class="task-menu-btn" aria-label="Task options">···</button>
@@ -582,7 +590,7 @@ function renderDone() {
     }
     li.innerHTML = `
       <input type="checkbox" class="task-check" checked aria-label="Mark as not done" />
-      <span class="task-label">${escHtml(task.text)}</span>
+      <span class="task-label">${linkifyText(task.text)}</span>
       <div class="task-right">
         ${task.cat_id ? catPillHTML(task.cat_id) : ''}
         <button class="task-menu-btn" aria-label="Task options">···</button>
